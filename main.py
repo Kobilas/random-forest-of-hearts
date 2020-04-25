@@ -1,3 +1,9 @@
+# Matthew Kobilas
+# 04/25/20
+# Random Forest evaluation program
+# should be able to use on other datasets, but for my testing purposes
+# I used the UCI Heart Disease dataset
+
 from csv import reader
 from random import seed
 from random import randrange
@@ -70,13 +76,33 @@ def evaluate_en_masse(data, num_partitions):
             row_cp = row
             row_cp[-1] = None # hide result in test set from algorithm
             dt_test.append(row_cp)
-        print("dt_train #" + str(i) + ": " + str(dt_train))
-        print("=============================================================================================")
-        print("dt test #" + str(i) + ": " + str(dt_test))
-        print("\n\n")
+        # add code for running random forest and accuracy checking below
+
+# bulk of the program takes place in this function or sub-functions
+# creates a random_forest based on training, then evaluates testing and returns the predictions
+def build_random_forest(training, testing, max_tree_depth, min_size, subsample_ratio, num_trees, num_features):
+    trees = []
+    for i in range(num_trees):
+        sample_training = random_w_replacement_subsample(training, subsample_ratio)
+
+
+# returns ratio size of data
+# samples with replacement, so the original sample is not decreased between selections
+def random_w_replacement_subsample(data, ratio):
+    dt_sub = []
+    subsample_size = round(len(data) * ratio) # rounds to the nearest int
+    while len(dt_sub) <= subsample_size:
+        rand_idx = randrange(len(data))
+        dt_sub.append(data[rand_idx])
+    return dt_sub
 
 seed(666) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
 fname = "heart.csv"
 data = load_prep_csv(fname)
-evaluate_en_masse(data, 3)
+print("full data: " + str(data))
+quarter_sample = random_w_replacement_subsample(data, 0.25)
+print("quarter data: " + str(quarter_sample))
+half_sample = random_w_replacement_subsample(data, 0.5)
+print("half data: " + str(half_sample))
+#evaluate_en_masse(data, 3)
