@@ -48,10 +48,35 @@ def partition_data(data, num_partitions):
             dt_parts[part_i].append(dt_cp.pop(rand_idx)) # append to current partition we are creating
     return dt_parts
 
+# calculates and returns accuracy as a percentage float
+def get_accuracy(actual, prediction):
+    num_correct = 0
+    for i in range(len(actual)):
+        if actual[i] == predicted[i]:
+            correct += 1
+    return (num_correct / float(len(actual))) * 100.0
+
+# evaluting random forest using k-fold cross-validation where k is num_partitions
+# can add repetition using different seeds to allow for "larger" dataset in the future
+def evaluate_en_masse(data, num_partitions):
+    dt_parts = partition_data(data, num_partitions)
+    mass_scores = []
+    for i, part in enumerate(dt_parts):
+        dt_train = dt_parts # right now dt_parts is a list (dataset) of lists (parts) of lists (rows)
+        dt_train.remove(part) # remove fold that will be used as test dataset
+        dt_train = sum(dt_train, []) # collapse remaining folds into a list (dataset) of lists (rows)
+        dt_test = []
+        for row in part:
+            row_cp = row
+            row_cp[-1] = None # hide result in test set from algorithm
+            dt_test.append(row_cp)
+        print("dt_train #" + str(i) + ": " + str(dt_train))
+        print("=============================================================================================")
+        print("dt test #" + str(i) + ": " + str(dt_test))
+        print("\n\n")
+
 seed(666) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
 fname = "heart.csv"
 data = load_prep_csv(fname)
-data_parts = partition_data(data, 10)
-for i, part in enumerate(data_parts):
-    print("parition num " + str(i) + ": " + str(part))
+evaluate_en_masse(data, 3)
