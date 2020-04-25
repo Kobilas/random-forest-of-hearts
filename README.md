@@ -1,6 +1,6 @@
-# random-forest-of-irises
- Kaggle Iris Species dataset machine learning to predict species of iris
+# random-forest-of-hearts
+ Classifying records in heart disease dataset as either having heart disease or not by using random forests
 
 # Data
  Data can be found at kaggle:
- https://www.kaggle.com/uciml/iris
+ https://www.kaggle.com/ronitf/heart-disease-uci
