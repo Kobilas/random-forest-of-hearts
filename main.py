@@ -7,7 +7,8 @@
 from csv import reader
 from random import seed
 from random import randrange
-from math import sqrt, floor
+from math import sqrt, floor, inf
+from operator import itemgetter
 
 # loads csv to list of lists
 # prepares it using str_flt_col_to_float for all columns except class value column
@@ -64,10 +65,10 @@ def get_accuracy(actual, prediction):
 
 # evaluting random forest using k-fold cross-validation where k is num_partitions
 # can add repetition using different seeds to allow for "larger" dataset in the future
-def evaluate_en_masse(data, num_partitions):
+def evaluate_en_masse(data, num_partitions, max_tree_depth, min_size, subsample_ratio, num_trees, num_features):
     dt_parts = partition_data(data, num_partitions)
     mass_scores = []
-    for i, part in enumerate(dt_parts):
+    for part in dt_parts:
         dt_train = dt_parts # right now dt_parts is a list (dataset) of lists (parts) of lists (rows)
         dt_train.remove(part) # remove fold that will be used as test dataset
         dt_train = sum(dt_train, []) # collapse remaining folds into a list (dataset) of lists (rows)
@@ -76,14 +77,17 @@ def evaluate_en_masse(data, num_partitions):
             row_cp = row
             row_cp[-1] = None # hide result in test set from algorithm
             dt_test.append(row_cp)
-        # add code for running random forest and accuracy checking below
+        predictions = build_random_forest(dt_train, dt_test, max_tree_depth, min_size, subsample_ratio, num_trees, num_features)
+        # add code for accuracy checking below
 
 # bulk of the program takes place in this function or sub-functions
 # creates a random_forest based on training, then evaluates testing and returns the predictions
 def build_random_forest(training, testing, max_tree_depth, min_size, subsample_ratio, num_trees, num_features):
-    trees = []
+    forest = []
     for i in range(num_trees):
         sample_training = random_w_replacement_subsample(training, subsample_ratio)
+        new_tree = build_tree(sample_training, max_tree_depth, min_size, num_features)
+        forest.append(new_tree)
 
 
 # returns ratio size of data
@@ -91,18 +95,91 @@ def build_random_forest(training, testing, max_tree_depth, min_size, subsample_r
 def random_w_replacement_subsample(data, ratio):
     dt_sub = []
     subsample_size = round(len(data) * ratio) # rounds to the nearest int
-    while len(dt_sub) <= subsample_size:
+    while len(dt_sub) < subsample_size:
         rand_idx = randrange(len(data))
-        dt_sub.append(data[rand_idx])
+        dt_sub.append(data[rand_idx]) # appends random record to subsample, but does not pop (selection with replacement)
     return dt_sub
+
+# creates a single decision tree
+def build_tree(training, max_tree_depth, min_size, num_features):
+    root = get_branching_pt(training, num_features)
+    print(str(root) + "\n\n")
+
+
+# discerns branching point from data based on number of features indicated
+# gets random set of features (columns) each time
+def get_branching_pt(data, num_features):
+    unique_classes = list(set(row[-1] for row in data)) # get list of unique class values
+    branch_idx, branch_val, branch_score, branch_splits = inf, inf, inf, None
+    ls_features = []
+    # loop for num_features, and randomly add column indices to ls_features
+    # no error checking, may loop forever if number of features is greater than number of columns in dataset
+    while len(ls_features) < num_features:
+        rand_idx = randrange(len(data[0])-1) # get random column idx that isn't class column
+        if rand_idx not in ls_features:
+            ls_features.append(rand_idx)
+    # need to sort either here, in gini_presplit, or in gini_value
+    # will split in gini_presplit
+    for idx_feat in ls_features:
+        for row in data:
+            tp_split = gini_presplit(data, idx_feat, row[idx_feat]) # splits data into tuple of (left, right) based on value of row[idx_feat]
+            gini = gini_value(tp_split, unique_classes) # calculate gini values, given tuple of split lists and the unique class values found above
+            # if resulting gini is better than what we had previously, 
+            # change all the values we have gotten so far to the newly determined ones
+            if gini < branch_score:
+                branch_idx = idx_feat
+                branch_val = row[idx_feat]
+                branch_score = gini
+                branch_splits = tp_split
+    # return dictionary of which branching attribute to use, the value that caused us to get the minimal gini
+    # as well as the tuple of the split that we used to find it
+    # gini score also returned for debugging purposes
+    return {"index": branch_idx,
+            "value": branch_val,
+            "score": branch_score,
+            "splits": tp_split}
+
+# splits data into left and right halves based on the attr_index column, and the value in attr_value
+def gini_presplit(data, attr_index, attr_value):
+    l = []
+    r = []
+    # sort the data, since data must be sorted prior to calculating gini values
+    # not necessarily necessary considering we are looping through all rows in get_branching_pt() anyway
+    # if code does not work accurately, it may arise from index errors due to this sort
+    dt_sort = sorted(data, key=itemgetter(attr_index))
+    for row in dt_sort:
+        if row[attr_index] < attr_value:
+            l.append(row)
+        else:
+            r.append(row)
+    return (l, r)
+
+# calculate gini value with 2-length tuple of split data
+# along with unique class values
+def gini_value(data_split, unique_class_values):
+    num_records = float(sum([len(splt) for splt in data_split])) # count total number of records among all splits
+    gini = 0.0 # initialize with purest possible Gini
+    for splt in data_split:
+        splt_len = float(len(splt))
+        if splt_len == 0: # size of split can be zero if the node is completely pure
+            continue
+        pre_score = 0.0
+        for value in unique_class_values: # scoring split on each unique class value in dataset
+            pre_score += ([row[-1] for row in splt].count(value) / splt_len)**2 # determining branch score without weight first
+        gini += (1.0 - pre_score) * (splt_len / num_records)
+    return gini
 
 seed(666) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
 fname = "heart.csv"
 data = load_prep_csv(fname)
-print("full data: " + str(data))
-quarter_sample = random_w_replacement_subsample(data, 0.25)
-print("quarter data: " + str(quarter_sample))
-half_sample = random_w_replacement_subsample(data, 0.5)
-print("half data: " + str(half_sample))
-#evaluate_en_masse(data, 3)
+# good value for k is 5, making training set be 80% and testing set be 20%
+k = 3
+max_dep = 5
+min_sz = 1
+sample_rate = 1.0
+# num_features best results are either sqrt or log_2 according to google
+num_features = int(sqrt(len(data[0])-1))
+# loop through num_trees eventually
+num_trees = 1
+evaluate_en_masse(data, 3, max_dep, min_sz, sample_rate, num_trees, num_features)
