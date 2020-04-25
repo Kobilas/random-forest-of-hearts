@@ -1,7 +1,7 @@
 from csv import reader
 from random import seed
 from random import randrange
-from math import sqrt
+from math import sqrt, floor
 
 # loads csv to list of lists
 # prepares it using str_flt_col_to_float for all columns except class value column
@@ -37,8 +37,21 @@ def str_int_col_to_int(data, column):
     for row in data:
         row[column] = enum_classes[row[column]]
 
+# partitions data into num_partitions and returns it as a list of list of lists
+def partition_data(data, num_partitions):
+    dt_cp = data # copy of data so that records may be randomly indexed and popped
+    max_len_part = floor(len(data) / num_partitions) # max length of each partition
+    dt_parts = [[] for empty_part in range(num_partitions)]
+    for part_i in range(num_partitions):
+        while len(dt_parts[part_i]) < max_len_part:
+            rand_idx = randrange(len(dt_cp)) # get random record from data
+            dt_parts[part_i].append(dt_cp.pop(rand_idx)) # append to current partition we are creating
+    return dt_parts
+
 seed(666) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
 fname = "heart.csv"
 data = load_prep_csv(fname)
-print(data)
+data_parts = partition_data(data, 10)
+for i, part in enumerate(data_parts):
+    print("parition num " + str(i) + ": " + str(part))
