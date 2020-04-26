@@ -48,11 +48,13 @@ def str_int_col_to_int(data, column):
 def partition_data(data, num_partitions):
     dt_cp = list(data) # copy of data so that records may be randomly indexed and popped
     max_len_part = floor(len(data) / num_partitions) # max length of each partition
-    dt_parts = [[] for empty_part in range(num_partitions)]
+    dt_parts = [] # list copying does not work like how i imagined it would
     for part_i in range(num_partitions):
-        while len(dt_parts[part_i]) < max_len_part:
+        new_part = []
+        while len(new_part) < max_len_part: 
             rand_idx = randrange(len(dt_cp)) # get random record from data
-            dt_parts[part_i].append(dt_cp.pop(rand_idx)) # append to current partition we are creating
+            new_part.append(dt_cp.pop(rand_idx)) # append to current partition we are creating
+        dt_parts.append(new_part)
     return dt_parts
 
 # calculates and returns accuracy as a percentage float
@@ -69,7 +71,10 @@ def evaluate_en_masse(data, num_partitions, max_tree_depth, min_size, subsample_
     dt_parts = partition_data(data, num_partitions)
     mass_scores = []
     for part in dt_parts:
-        dt_train = dt_parts # right now dt_parts is a list (dataset) of lists (parts) of lists (rows)
+        # another instance of list copying not behaving like i thought it should
+        # the number of scores being returned was halved because .remove was removing them from the
+        # list it was "referencing" rather than from the list i thought it copied
+        dt_train = list(dt_parts) # right now dt_parts is a list (dataset) of lists (parts) of lists (rows)
         dt_train.remove(part) # remove fold that will be used as test dataset
         dt_train = sum(dt_train, []) # collapse remaining folds into a list (dataset) of lists (rows)
         dt_test = []
@@ -153,6 +158,7 @@ def gini_presplit(data, attr_index, attr_value):
     # if code does not work accurately, it may arise from index errors due to this sort
     dt_sort = sorted(data, key=itemgetter(attr_index))
     for row in dt_sort:
+    #for row in data:
         if row[attr_index] < attr_value:
             l.append(row)
         else:
@@ -244,6 +250,33 @@ num_features = int(sqrt(len(data[0])-1))
 num_trees = [1, 5, 10]
 for i in num_trees:
     results = evaluate_en_masse(data, k, max_dep, min_sz, sample_rate, i, num_features)
-    print("Trees: " + str(i))
+    print("Number of Trees: " + str(i))
     print("Scores: " + str(results))
     print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
+# should try out other parameters here as well
+# should also see what the difference between sorting and not sorting is in terms of returned accuracies
+'''
+Results from sorting before splitting:
+Trees: 1
+Scores: [70.0, 66.66666666666666, 93.33333333333333, 83.33333333333334, 66.66666666666666, 60.0, 66.66666666666666, 73.33333333333333, 70.0, 66.66666666666666]
+Average Accuracy: 71.667%
+Trees: 5
+Scores: [93.33333333333333, 76.66666666666667, 80.0, 90.0, 70.0, 83.33333333333334, 76.66666666666667, 83.33333333333334, 73.33333333333333, 83.33333333333334]
+Average Accuracy: 81.000%
+Trees: 10
+Scores: [76.66666666666667, 73.33333333333333, 83.33333333333334, 83.33333333333334, 63.33333333333333, 90.0, 73.33333333333333, 90.0, 83.33333333333334, 83.33333333333334]
+Average Accuracy: 80.000%
+'''
+'''
+Results from not sorting before splitting:
+Number of Trees: 1
+Scores: [73.33333333333333, 71.66666666666667, 71.66666666666667, 75.0, 71.66666666666667]
+Average Accuracy: 72.667%
+Number of Trees: 5
+Scores: [76.66666666666667, 78.33333333333333, 76.66666666666667, 76.66666666666667, 56.666666666666664]
+Average Accuracy: 73.000%
+Number of Trees: 10
+Scores: [85.0, 81.66666666666667, 83.33333333333334, 81.66666666666667, 75.0]
+Average Accuracy: 81.333%
+'''
+# requires further testing, will leave it in sorting mode for now, maybe add a parameter
