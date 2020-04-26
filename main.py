@@ -46,7 +46,7 @@ def str_int_col_to_int(data, column):
 
 # partitions data into num_partitions and returns it as a list of list of lists
 def partition_data(data, num_partitions):
-    dt_cp = data # copy of data so that records may be randomly indexed and popped
+    dt_cp = list(data) # copy of data so that records may be randomly indexed and popped
     max_len_part = floor(len(data) / num_partitions) # max length of each partition
     dt_parts = [[] for empty_part in range(num_partitions)]
     for part_i in range(num_partitions):
@@ -60,7 +60,7 @@ def get_accuracy(actual, prediction):
     num_correct = 0
     for i in range(len(actual)):
         if actual[i] == prediction[i]:
-            correct += 1
+            num_correct += 1
     return (num_correct / float(len(actual))) * 100.0
 
 # evaluting random forest using k-fold cross-validation where k is num_partitions
@@ -74,7 +74,7 @@ def evaluate_en_masse(data, num_partitions, max_tree_depth, min_size, subsample_
         dt_train = sum(dt_train, []) # collapse remaining folds into a list (dataset) of lists (rows)
         dt_test = []
         for row in part:
-            row_cp = row
+            row_cp = list(row)
             row_cp[-1] = None # hide result in test set from algorithm
             dt_test.append(row_cp)
         predicted_results = build_predict_random_forest(dt_train, dt_test, max_tree_depth, min_size, subsample_ratio, num_trees, num_features)
@@ -106,15 +106,16 @@ def random_w_replacement_subsample(data, ratio):
 
 # creates a single decision tree
 def build_tree(training, max_tree_depth, min_size, num_features):
-    root = get_branching_pt(training, num_features)
+    root = get_branch(training, num_features)
     split_or_terminate(root, max_tree_depth, min_size, num_features, 1) # current depth is 1 because we just created root
     return root
 
 # discerns branching point from data based on number of features indicated
 # gets random set of features (columns) each time
-def get_branching_pt(data, num_features):
+def get_branch(data, num_features):
     unique_classes = list(set(row[-1] for row in data)) # get list of unique class values
-    branch_idx, branch_val, branch_score, branch_splits = inf, inf, inf, None
+    #branch_idx, branch_val, branch_score, branch_branches = inf, inf, inf, None
+    branch_idx, branch_val, branch_score, branch_branches = 999, 999, 999, None
     ls_features = []
     # loop for num_features, and randomly add column indices to ls_features
     # no error checking, may loop forever if number of features is greater than number of columns in dataset
@@ -126,32 +127,32 @@ def get_branching_pt(data, num_features):
     # will split in gini_presplit
     for idx_feat in ls_features:
         for row in data:
-            tp_split = gini_presplit(data, idx_feat, row[idx_feat]) # splits data into tuple of (left, right) based on value of row[idx_feat]
-            gini = gini_value(tp_split, unique_classes) # calculate gini values, given tuple of split lists and the unique class values found above
+            branches = gini_presplit(data, idx_feat, row[idx_feat]) # splits data into tuple of (left, right) based on value of row[idx_feat]
+            gini = gini_value(branches, unique_classes) # calculate gini values, given tuple of split lists and the unique class values found above
             # if resulting gini is better than what we had previously, 
             # change all the values we have gotten so far to the newly determined ones
             if gini < branch_score:
                 branch_idx = idx_feat
                 branch_val = row[idx_feat]
                 branch_score = gini
-                branch_splits = tp_split
+                branch_branches = branches
     # return dictionary of which branching attribute to use, the value that caused us to get the minimal gini
     # as well as the tuple of the split that we used to find it
     # gini score also returned for debugging purposes
     return {"index": branch_idx,
             "value": branch_val,
             "score": branch_score,
-            "splits": tp_split}
+            "branches": branch_branches}
 
 # splits data into left and right halves based on the attr_index column, and the value in attr_value
 def gini_presplit(data, attr_index, attr_value):
     l = []
     r = []
     # sort the data, since data must be sorted prior to calculating gini values
-    # not necessarily necessary considering we are looping through all rows in get_branching_pt() anyway
+    # not necessarily necessary considering we are looping through all rows in get_branch() anyway
     # if code does not work accurately, it may arise from index errors due to this sort
-    #dt_sort = sorted(data, key=itemgetter(attr_index))
-    for row in data:
+    dt_sort = sorted(data, key=itemgetter(attr_index))
+    for row in dt_sort:
         if row[attr_index] < attr_value:
             l.append(row)
         else:
@@ -174,8 +175,8 @@ def gini_value(data_split, unique_class_values):
     return gini
 
 def split_or_terminate(node, max_tree_depth, min_size, num_features, depth_of_node):
-    l, r = node["splits"]
-    del(node["splits"])
+    l, r = node["branches"]
+    del(node["branches"])
     if not l or not r: # checking for false branch
         node["l"] = node["r"] = terminate(l + r)
         return
@@ -185,12 +186,12 @@ def split_or_terminate(node, max_tree_depth, min_size, num_features, depth_of_no
     if len(l) <= min_size: # checking if left child is less than min size and whether we need to process it further
         node["l"] = terminate(l)
     else: # if it is greater than min size, we get branching attribute and call split_or_terminate recursively
-        node["l"] = get_branching_pt(l, num_features)
+        node["l"] = get_branch(l, num_features)
         split_or_terminate(node["l"], max_tree_depth, min_size, num_features, depth_of_node+1)
     if len(r) <= min_size: # checking if right child is less than min size and whether we need to process further
         node["r"] = terminate(r)
     else: # if it is greater than min size, we get branching attribute and call split_or_terminate recursively
-        node["r"] = get_branching_pt(r, num_features)
+        node["r"] = get_branch(r, num_features)
         split_or_terminate(node["r"], max_tree_depth, min_size, num_features, depth_of_node+1)
 
 # create terminal node branch in tree, meaning we have achieved pure node
@@ -240,8 +241,9 @@ sample_rate = 1.0
 # num_features best results are either sqrt or log_2 according to google
 num_features = int(sqrt(len(data[0])-1))
 # loop through num_trees eventually
-num_trees = 5
-results = evaluate_en_masse(data, k, max_dep, min_sz, sample_rate, num_trees, num_features)
-print("Trees: " + str(num_trees))
-print("Scores: " + str(results))
-print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
+num_trees = [1, 5, 10]
+for i in num_trees:
+    results = evaluate_en_masse(data, k, max_dep, min_sz, sample_rate, i, num_features)
+    print("Trees: " + str(i))
+    print("Scores: " + str(results))
+    print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
