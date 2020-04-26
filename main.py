@@ -77,12 +77,15 @@ def evaluate_en_masse(data, num_partitions, max_tree_depth, min_size, subsample_
             row_cp = row
             row_cp[-1] = None # hide result in test set from algorithm
             dt_test.append(row_cp)
-        predictions = build_random_forest(dt_train, dt_test, max_tree_depth, min_size, subsample_ratio, num_trees, num_features)
-        # add code for accuracy checking below
+        predicted_results = build_predict_random_forest(dt_train, dt_test, max_tree_depth, min_size, subsample_ratio, num_trees, num_features)
+        actual_results = [row[-1] for row in part]
+        accuracy_measure = get_accuracy(actual_results, predicted_results)
+        mass_scores.append(accuracy_measure)
+    return scores
 
 # bulk of the program takes place in this function or sub-functions
 # creates a random_forest based on training, then evaluates testing and returns the predictions
-def build_random_forest(training, testing, max_tree_depth, min_size, subsample_ratio, num_trees, num_features):
+def build_predict_random_forest(training, testing, max_tree_depth, min_size, subsample_ratio, num_trees, num_features):
     forest = []
     for i in range(num_trees):
         sample_training = random_w_replacement_subsample(training, subsample_ratio)
