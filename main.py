@@ -119,8 +119,7 @@ def build_tree(training, max_tree_depth, min_size, num_features):
 # gets random set of features (columns) each time
 def get_branch(data, num_features):
     unique_classes = list(set(row[-1] for row in data)) # get list of unique class values
-    #branch_idx, branch_val, branch_score, branch_branches = inf, inf, inf, None
-    branch_idx, branch_val, branch_score, branch_branches = 999, 999, 999, None
+    branch_idx, branch_val, branch_score, branch_branches = inf, inf, inf, None
     ls_features = []
     # loop for num_features, and randomly add column indices to ls_features
     # no error checking, may loop forever if number of features is greater than number of columns in dataset
