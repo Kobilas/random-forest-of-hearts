@@ -59,7 +59,7 @@ def partition_data(data, num_partitions):
 def get_accuracy(actual, prediction):
     num_correct = 0
     for i in range(len(actual)):
-        if actual[i] == predicted[i]:
+        if actual[i] == prediction[i]:
             correct += 1
     return (num_correct / float(len(actual))) * 100.0
 
@@ -81,7 +81,7 @@ def evaluate_en_masse(data, num_partitions, max_tree_depth, min_size, subsample_
         actual_results = [row[-1] for row in part]
         accuracy_measure = get_accuracy(actual_results, predicted_results)
         mass_scores.append(accuracy_measure)
-    return scores
+    return mass_scores
 
 # bulk of the program takes place in this function or sub-functions
 # creates a random_forest based on training, then evaluates testing and returns the predictions
@@ -150,8 +150,8 @@ def gini_presplit(data, attr_index, attr_value):
     # sort the data, since data must be sorted prior to calculating gini values
     # not necessarily necessary considering we are looping through all rows in get_branching_pt() anyway
     # if code does not work accurately, it may arise from index errors due to this sort
-    dt_sort = sorted(data, key=itemgetter(attr_index))
-    for row in dt_sort:
+    #dt_sort = sorted(data, key=itemgetter(attr_index))
+    for row in data:
         if row[attr_index] < attr_value:
             l.append(row)
         else:
@@ -174,8 +174,8 @@ def gini_value(data_split, unique_class_values):
     return gini
 
 def split_or_terminate(node, max_tree_depth, min_size, num_features, depth_of_node):
-    l, r = node["groups"]
-    del(node["groups"])
+    l, r = node["splits"]
+    del(node["splits"])
     if not l or not r: # checking for false branch
         node["l"] = node["r"] = terminate(l + r)
         return
@@ -186,12 +186,12 @@ def split_or_terminate(node, max_tree_depth, min_size, num_features, depth_of_no
         node["l"] = terminate(l)
     else: # if it is greater than min size, we get branching attribute and call split_or_terminate recursively
         node["l"] = get_branching_pt(l, num_features)
-        split_or_terminate(node["l"], max_tree_depth, min_size, num_features, depth+1)
+        split_or_terminate(node["l"], max_tree_depth, min_size, num_features, depth_of_node+1)
     if len(r) <= min_size: # checking if right child is less than min size and whether we need to process further
         node["r"] = terminate(r)
     else: # if it is greater than min size, we get branching attribute and call split_or_terminate recursively
         node["r"] = get_branching_pt(r, num_features)
-        split_or_terminate(node["r"], max_tree_depth, min_size, num_features, depth+1)
+        split_or_terminate(node["r"], max_tree_depth, min_size, num_features, depth_of_node+1)
 
 # create terminal node branch in tree, meaning we have achieved pure node
 # or that gini index is low enough where we do not have to split any further
@@ -201,7 +201,7 @@ def terminate(branch):
 
 # make a prediction using bagging and a forest on a single record in dataset
 def predict_w_bagging(forest, record):
-    results = [predict(tree, row) for tree in forest] # predict what result of record is for each tree in the forest
+    results = [predict_w_tree(tree, record) for tree in forest] # predict what result of record is for each tree in the forest
     # return the mode of the results of predicting with each tree in the forest
     # this is akin to voting, as is usual in ensemble learning
     return max(set(results), key=results.count)
@@ -213,7 +213,7 @@ def predict_w_tree(node, record):
         # if it is, then we check if the node at that branch is a dictionary
         if isinstance(node["l"], dict):
             # if its a dictionary, we call this function recursively to continue classifying
-            return predict_w_tree(node["l"], row)
+            return predict_w_tree(node["l"], record)
         # or not
         else:
             # if its not, then we just return the classification found there
@@ -223,7 +223,7 @@ def predict_w_tree(node, record):
         # if the node at end of branch is a dictionary
         if isinstance(node["r"], dict):
             # then we call this function recursively and continue classfiying
-            return predict_w_tree(node["r"], row)
+            return predict_w_tree(node["r"], record)
         else:
             # otherwise we return the classification
             return node["r"]
@@ -233,12 +233,15 @@ seed(666) # set random seed, 666 for my ucid mk666
 fname = "heart.csv"
 data = load_prep_csv(fname)
 # good value for k is 5, making training set be 80% and testing set be 20%
-k = 3
-max_dep = 5
+k = 5
+max_dep = 10
 min_sz = 1
 sample_rate = 1.0
 # num_features best results are either sqrt or log_2 according to google
 num_features = int(sqrt(len(data[0])-1))
 # loop through num_trees eventually
-num_trees = 1
-evaluate_en_masse(data, 3, max_dep, min_sz, sample_rate, num_trees, num_features)
+num_trees = 5
+results = evaluate_en_masse(data, k, max_dep, min_sz, sample_rate, num_trees, num_features)
+print("Trees: " + str(num_trees))
+print("Scores: " + str(results))
+print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
