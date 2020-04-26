@@ -103,8 +103,8 @@ def random_w_replacement_subsample(data, ratio):
 # creates a single decision tree
 def build_tree(training, max_tree_depth, min_size, num_features):
     root = get_branching_pt(training, num_features)
-    print(str(root) + "\n\n")
-
+    split_or_terminate(root, max_tree_depth, min_size, num_features, 1) # current depth is 1 because we just created root
+    return root
 
 # discerns branching point from data based on number of features indicated
 # gets random set of features (columns) each time
@@ -168,6 +168,32 @@ def gini_value(data_split, unique_class_values):
             pre_score += ([row[-1] for row in splt].count(value) / splt_len)**2 # determining branch score without weight first
         gini += (1.0 - pre_score) * (splt_len / num_records)
     return gini
+
+def split_or_terminate(node, max_tree_depth, min_size, num_features, depth_of_node):
+    l, r = node["groups"]
+    del(node["groups"])
+    if not l or not r: # checking for false branch
+        node["l"] = node["r"] = terminate(l + r)
+        return
+    if depth_of_node >= max_tree_depth: # checking if this node hit max depth
+        node["l"], node["r"] = terminate(l), terminate(r)
+        return
+    if len(l) <= min_size: # checking if left child is less than min size and whether we need to process it further
+        node["l"] = terminate(l)
+    else: # if it is greater than min size, we get branching attribute and call split_or_terminate recursively
+        node["l"] = get_branching_pt(l, num_features)
+        split_or_terminate(node["l"], max_tree_depth, min_size, num_features, depth+1)
+    if len(r) <= min_size: # checking if right child is less than min size and whether we need to process further
+        node["r"] = terminate(r)
+    else: # if it is greater than min size, we get branching attribute and call split_or_terminate recursively
+        node["r"] = get_branching_pt(r, num_features)
+        split_or_terminate(node["r"], max_tree_depth, min_size, num_features, depth+1)
+
+# create terminal node branch in tree, meaning we have achieved pure node
+# or that gini index is low enough where we do not have to split any further
+def terminate(branch):
+    resulting_class_values = [row[-1] for row in branch]
+    return max(set(resulting_class_values), key=resulting_class_values.count)
 
 seed(666) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
