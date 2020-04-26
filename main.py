@@ -88,7 +88,8 @@ def build_random_forest(training, testing, max_tree_depth, min_size, subsample_r
         sample_training = random_w_replacement_subsample(training, subsample_ratio)
         new_tree = build_tree(sample_training, max_tree_depth, min_size, num_features)
         forest.append(new_tree)
-
+    predictions = [predict_w_bagging(forest, row) for row in testing]
+    return predictions
 
 # returns ratio size of data
 # samples with replacement, so the original sample is not decreased between selections
@@ -194,6 +195,35 @@ def split_or_terminate(node, max_tree_depth, min_size, num_features, depth_of_no
 def terminate(branch):
     resulting_class_values = [row[-1] for row in branch]
     return max(set(resulting_class_values), key=resulting_class_values.count)
+
+# make a prediction using bagging and a forest on a single record in dataset
+def predict_w_bagging(forest, record):
+    results = [predict(tree, row) for tree in forest] # predict what result of record is for each tree in the forest
+    # return the mode of the results of predicting with each tree in the forest
+    # this is akin to voting, as is usual in ensemble learning
+    return max(set(results), key=results.count)
+
+# classify a single record using a single tree
+def predict_w_tree(node, record):
+    # check if the value at branching attribute is less than branching condition
+    if record[node["index"]] < node["value"]:
+        # if it is, then we check if the node at that branch is a dictionary
+        if isinstance(node["l"], dict):
+            # if its a dictionary, we call this function recursively to continue classifying
+            return predict_w_tree(node["l"], row)
+        # or not
+        else:
+            # if its not, then we just return the classification found there
+            return node["l"]
+    # if its not less than the branching condition, we continue down the right branch instead
+    else:
+        # if the node at end of branch is a dictionary
+        if isinstance(node["r"], dict):
+            # then we call this function recursively and continue classfiying
+            return predict_w_tree(node["r"], row)
+        else:
+            # otherwise we return the classification
+            return node["r"]
 
 seed(666) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
