@@ -10,7 +10,7 @@ from random import randrange
 from math import sqrt, floor, inf
 from operator import itemgetter
 # the commented out imports below may not be needed if we used cross_val_score
-from sklearn.model_selection import cross_val_score #, KFold
+from sklearn.model_selection import cross_val_score, train_test_split #, KFold
 from sklearn.ensemble import RandomForestClassifier
 #from sklearn.metrics import accuracy_score
 from sklearn.utils import shuffle
@@ -254,6 +254,8 @@ def evaluate_w_sklearn(data, k, num_estimators, num_features, max_tree_depth):
         X_train, X_test = X[train_idx], X[test_idx]
         Y_train, Y_test = Y[train_idx], Y[test_idx]
     '''
+    X_train = X_test = Y_train = Y_test = []
+    X,train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
     # if you unstring out the above then tab in the clf lines below
     clf = RandomForestClassifier(n_estimators=num_estimators, criterion="gini", max_depth=max_tree_depth,
                                  max_features=num_features)
@@ -262,6 +264,8 @@ def evaluate_w_sklearn(data, k, num_estimators, num_features, max_tree_depth):
     clf.fit(X, Y)
     scores = cross_val_score(clf, X, Y, cv=k)
     scores = [score*100 for score in scores]
+    Y_predicted = clf.predict(X_test)
+    #print(Y_predicted)
     return scores
 
 # cannot use seed() function and also random_state parameter from sklearn at same time,
