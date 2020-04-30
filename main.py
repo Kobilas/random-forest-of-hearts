@@ -30,7 +30,7 @@ def load_prep_csv(filename):
     for i in range(0, len(dt[0]) - 1):
         str_flt_col_to_float(dt, i)
     str_int_col_to_int(dt, len(dt[0]) - 1) # converts class value column to enumeration of it in terms of int
-    return dt
+    return shuffle(dt)
 
 # convert string in column in dataset (list of lists) to float
 # column is the idx of the column in the list of list
@@ -239,9 +239,11 @@ def predict_w_tree(node, record):
             # otherwise we return the classification
             return node["r"]
 
-def evaluate_w_sklearn(data, k, my_seed, num_estimators, num_features, max_tree_depth):
+def evaluate_w_sklearn(data, k, num_estimators, num_features, max_tree_depth):
     X = []
     Y = []
+    #shuffled = shuffle(data)
+    # commented out because we are shuffling data in load_prep_csv function
     for i in range(len(data)):
         X.append(data[i][:-1])
         Y.append(data[i][-1])
@@ -259,9 +261,11 @@ def evaluate_w_sklearn(data, k, my_seed, num_estimators, num_features, max_tree_
     #clf.fit(X_train, Y_train)
     clf.fit(X, Y)
     scores = cross_val_score(clf, X, Y, cv=k)
-    print(scores)
+    scores = [score*100 for score in scores]
+    return scores
 
-
+# cannot use seed() function and also random_state parameter from sklearn at same time,
+# so we will just stick with the below seed() function
 my_seed = 666
 seed(my_seed) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
@@ -275,7 +279,7 @@ sample_rate = 1.0
 # num_features best results are either sqrt or log_2 according to google
 num_features = int(sqrt(len(data[0])-1))
 # remove below string block to evaluate using random forest from scratch
-'''
+
 # loop through num_trees eventually
 num_trees = [1, 5, 10]
 print("Results of Random Forest from Scratch")
@@ -285,8 +289,9 @@ for i in num_trees:
     print("Scores: " + str(results))
     print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
 # should try out other parameters here as well
+# complete string block below to not evaluate random forest from scratch
+
 # should also see what the difference between sorting and not sorting is in terms of returned accuracies
-'''
 '''
 Results from sorting before splitting:
 Trees: 1
@@ -312,7 +317,9 @@ Scores: [85.0, 81.66666666666667, 83.33333333333334, 81.66666666666667, 75.0]
 Average Accuracy: 81.333%
 '''
 # requires further testing, will leave it in sorting mode for now, maybe add a parameter
-print("Results of Random Forest from SciKit Learn")
-num_trees = 10 # default is 10
-# default for num_features is auto, which is sqrt
-evaluate_w_sklearn(data, k, seed, num_trees, num_features, max_dep)
+print("\nResults of Random Forest from SciKit Learn")
+for i in num_trees:
+    results = evaluate_w_sklearn(data, k, i, num_features, max_dep)
+    print("Number of Trees: " + str(i))
+    print("Scores: " + str(results))
+    print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
