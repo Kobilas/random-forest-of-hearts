@@ -9,6 +9,11 @@ from random import seed
 from random import randrange
 from math import sqrt, floor, inf
 from operator import itemgetter
+# the commented out imports below may not be needed if we used cross_val_score
+from sklearn.model_selection import cross_val_score #, KFold
+from sklearn.ensemble import RandomForestClassifier
+#from sklearn.metrics import accuracy_score
+from sklearn.utils import shuffle
 
 # loads csv to list of lists
 # prepares it using str_flt_col_to_float for all columns except class value column
@@ -234,7 +239,31 @@ def predict_w_tree(node, record):
             # otherwise we return the classification
             return node["r"]
 
-seed(666) # set random seed, 666 for my ucid mk666
+def evaluate_w_sklearn(data, k, my_seed, num_estimators, num_features, max_tree_depth):
+    X = []
+    Y = []
+    for i in range(len(data)):
+        X.append(data[i][:-1])
+        Y.append(data[i][-1])
+    '''
+    kf = KFold(n_splits=k, shuffle=True, random_state=seed)
+    X_train = X_test = Y_train = Y_test = []
+    for train_idx, test_idx in kf.split(X):
+        X_train, X_test = X[train_idx], X[test_idx]
+        Y_train, Y_test = Y[train_idx], Y[test_idx]
+    '''
+    # if you unstring out the above then tab in the clf lines below
+    clf = RandomForestClassifier(n_estimators=num_estimators, criterion="gini", max_depth=max_tree_depth,
+                                 max_features=num_features)
+    #                             max_features=num_features, random_state=my_seed)
+    #clf.fit(X_train, Y_train)
+    clf.fit(X, Y)
+    scores = cross_val_score(clf, X, Y, cv=k)
+    print(scores)
+
+
+my_seed = 666
+seed(my_seed) # set random seed, 666 for my ucid mk666
 # load data to list and prep it
 fname = "heart.csv"
 data = load_prep_csv(fname)
@@ -245,8 +274,11 @@ min_sz = 1
 sample_rate = 1.0
 # num_features best results are either sqrt or log_2 according to google
 num_features = int(sqrt(len(data[0])-1))
+# remove below string block to evaluate using random forest from scratch
+'''
 # loop through num_trees eventually
 num_trees = [1, 5, 10]
+print("Results of Random Forest from Scratch")
 for i in num_trees:
     results = evaluate_en_masse(data, k, max_dep, min_sz, sample_rate, i, num_features)
     print("Number of Trees: " + str(i))
@@ -254,6 +286,7 @@ for i in num_trees:
     print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
 # should try out other parameters here as well
 # should also see what the difference between sorting and not sorting is in terms of returned accuracies
+'''
 '''
 Results from sorting before splitting:
 Trees: 1
@@ -279,3 +312,7 @@ Scores: [85.0, 81.66666666666667, 83.33333333333334, 81.66666666666667, 75.0]
 Average Accuracy: 81.333%
 '''
 # requires further testing, will leave it in sorting mode for now, maybe add a parameter
+print("Results of Random Forest from SciKit Learn")
+num_trees = 10 # default is 10
+# default for num_features is auto, which is sqrt
+evaluate_w_sklearn(data, k, seed, num_trees, num_features, max_dep)
