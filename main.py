@@ -160,8 +160,8 @@ def gini_presplit(data, attr_index, attr_value):
     # sort the data, since data must be sorted prior to calculating gini values
     # not necessarily necessary considering we are looping through all rows in get_branch() anyway
     # if code does not work accurately, it may arise from index errors due to this sort
-    dt_sort = sorted(data, key=itemgetter(attr_index))
-    for row in dt_sort:
+    #dt_sort = sorted(data, key=itemgetter(attr_index))
+    for row in data:
     #for row in data:
         if row[attr_index] < attr_value:
             l.append(row)
@@ -293,34 +293,7 @@ for i in num_trees:
     print("Scores: " + str(results))
     print("Average Accuracy: %.3f%%" % (sum(results) / float(len(results))))
 # should try out other parameters here as well
-# complete string block below to not evaluate random forest from scratch
 
-# should also see what the difference between sorting and not sorting is in terms of returned accuracies
-'''
-Results from sorting before splitting:
-Trees: 1
-Scores: [70.0, 66.66666666666666, 93.33333333333333, 83.33333333333334, 66.66666666666666, 60.0, 66.66666666666666, 73.33333333333333, 70.0, 66.66666666666666]
-Average Accuracy: 71.667%
-Trees: 5
-Scores: [93.33333333333333, 76.66666666666667, 80.0, 90.0, 70.0, 83.33333333333334, 76.66666666666667, 83.33333333333334, 73.33333333333333, 83.33333333333334]
-Average Accuracy: 81.000%
-Trees: 10
-Scores: [76.66666666666667, 73.33333333333333, 83.33333333333334, 83.33333333333334, 63.33333333333333, 90.0, 73.33333333333333, 90.0, 83.33333333333334, 83.33333333333334]
-Average Accuracy: 80.000%
-'''
-'''
-Results from not sorting before splitting:
-Number of Trees: 1
-Scores: [73.33333333333333, 71.66666666666667, 71.66666666666667, 75.0, 71.66666666666667]
-Average Accuracy: 72.667%
-Number of Trees: 5
-Scores: [76.66666666666667, 78.33333333333333, 76.66666666666667, 76.66666666666667, 56.666666666666664]
-Average Accuracy: 73.000%
-Number of Trees: 10
-Scores: [85.0, 81.66666666666667, 83.33333333333334, 81.66666666666667, 75.0]
-Average Accuracy: 81.333%
-'''
-# requires further testing, will leave it in sorting mode for now, maybe add a parameter
 print("\nResults of Random Forest from SciKit Learn")
 for i in num_trees:
     results = evaluate_w_sklearn(data, k, i, num_features, max_dep)
