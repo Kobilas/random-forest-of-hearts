@@ -255,7 +255,7 @@ def evaluate_w_sklearn(data, k, num_estimators, num_features, max_tree_depth):
         Y_train, Y_test = Y[train_idx], Y[test_idx]
     '''
     X_train = X_test = Y_train = Y_test = []
-    X,train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
     # if you unstring out the above then tab in the clf lines below
     clf = RandomForestClassifier(n_estimators=num_estimators, criterion="gini", max_depth=max_tree_depth,
                                  max_features=num_features)
@@ -286,6 +286,7 @@ num_features = int(sqrt(len(data[0])-1))
 
 # loop through num_trees eventually
 num_trees = [1, 5, 10]
+# takes ~60 seconds to run with 100 trees
 print("Results of Random Forest from Scratch")
 for i in num_trees:
     results = evaluate_en_masse(data, k, max_dep, min_sz, sample_rate, i, num_features)
